@@ -10,29 +10,26 @@ celery.config_from_object('celeryconfig')
 GITHUB = 'https://api.github.com'
 
 @celery.task
-def loadit():
+def update_all_projects():
     details = []
     with open('projects.json', 'rb') as f:
         projects = json.loads(f.read())
         for project in projects:
-            user, pj = urlparse(project).path.split('/')[1:]
-            url = '%s/repos/%s/%s' % (GITHUB, user, pj)
-            r = requests.get(url)
-            if r.status_code == 200:
-                details.append(r.json())
-            # else:
-            #     print r.content
-    print details
-    if os.path.exists('details.json'):
-        with open('details.json', 'rb') as f:
-            all_details = json.loads(f.read())
-    else:
-        all_details = []
-    if all_details:
-        all_details.extend(details)
-    print all_details
-    with open('details.json', 'wb') as f:
-        f.write(json.dumps(all_details))
+            # Call task below as normal function so processing
+            # is not delayed.
+            pj_details = update_project(project['full_name'])
+            if pj_details:
+                details.append(pj_details)
+    with open('projects.json', 'wb') as f:
+        f.write(json.dumps(details))
     return 'woot'
 
-
+@celery.task
+def update_project(full_name):
+    url = '%s/repos/%s' % (GITHUB, full_name)
+    r = requests.get(url)
+    if r.status_code == 200:
+        return r.json()
+    else:
+        # if it returns an error, well, that's OK for now.
+        return None
