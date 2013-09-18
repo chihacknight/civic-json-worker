@@ -1,6 +1,8 @@
-from flask import Flask, make_response, request, current_app
+from flask import Flask, make_response, request, current_app, abort
 from datetime import timedelta
 from functools import update_wrapper
+from worker import update_project
+import json
 
 app = Flask(__name__)
 
@@ -45,15 +47,27 @@ def crossdomain(origin=None, methods=None, headers=None,
         return update_wrapper(wrapped_function, f)
     return decorator
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['POST'])
 @crossdomain(origin="*")
 def submit_project():
-    return make_response("Here's your stinkin response")
+    project_url = request.form.get('project_url')
+    project_details = update_project(project_url)
+    if project_details:
+        resp = make_response(json.dumps(project_details))
+        resp.headers['Content-Type'] = 'application/json'
+        return resp
+    else:
+        return make_response('The URL you submitted, %s, does not appear to be a valid Github repo' % project_url, 401)
 
 @app.route('/projects/', methods=['GET'])
 @crossdomain(origin="*")
 def get_projects():
-    return make_response("Here's another stinkin response")
+    pjs = []
+    with open('project_details.json', 'rb') as f:
+        pjs = f.read()
+    resp = make_response(pjs)
+    resp.headers['Content-Type'] = 'application/json'
+    return resp
 
 if __name__ == "__main__":
     app.run(debug=True, port=7777)
