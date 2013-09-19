@@ -94,9 +94,8 @@ def update_projects():
 def delete_project():
     if request.form.get('the_key') == THE_KEY:
         project_url = request.form.get('project_url')
-        f = open('projects.json', 'rb'):
-        projects = json.load(f.read())
-        f.close()
+        with open('projects.json', 'rb') as f:
+            projects = json.load(f)
         try:
             projects.remove(project_url)
             f = open('projects.json', 'wb')
