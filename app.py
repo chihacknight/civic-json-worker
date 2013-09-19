@@ -52,7 +52,7 @@ def crossdomain(origin=None, methods=None, headers=None,
         return update_wrapper(wrapped_function, f)
     return decorator
 
-@app.route('/', methods=['POST'])
+@app.route('/add-project/', methods=['POST'])
 @crossdomain(origin="*")
 def submit_project():
     project_url = request.form.get('project_url')
@@ -88,6 +88,25 @@ def update_projects():
     with open('project_details.json', 'wb') as f:
         f.write(json.dumps(details))
     resp = make_response('woot')
+    return resp
+
+@app.route('/delete-project/', methods=['POST'])
+def delete_project():
+    if request.form.get('the_key') == FLASK_KEY:
+        project_url = request.form.get('project_url')
+        f = open('projects.json', 'rb'):
+        projects = json.load(f.read())
+        f.close()
+        try:
+            projects.remove(project_url)
+            f = open('projects.json', 'wb')
+            f.write(json.dumps(projects))
+            f.close()
+            resp = make_response('Deleted %s' % project_url)
+        except ValueError:
+            resp = make_response('%s is not in the registry', 400)
+    else:
+        resp = make_response("I can't do that Dave", 401)
     return resp
 
 def update_project(project_url):
