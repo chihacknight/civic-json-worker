@@ -1,8 +1,13 @@
 from flask import Flask, make_response, request, current_app, abort
 from datetime import timedelta
 from functools import update_wrapper
-from worker import update_project
 import json
+import os
+import requests
+from urlparse import urlparse
+
+THE_KEY = os.environ['FLASK_KEY']
+GITHUB = 'https://api.github.com'
 
 app = Flask(__name__)
 
@@ -68,6 +73,43 @@ def get_projects():
     resp = make_response(pjs)
     resp.headers['Content-Type'] = 'application/json'
     return resp
+
+@app.route('/update-projects/', methods=['GET'])
+def update_projects():
+    if request.args.get('the_key') == THE_KEY:
+        details = []
+        with open('projects.json', 'rb') as f:
+            projects = json.loads(f.read())
+            for project in projects:
+                # Call task below as normal function so processing
+                # is not delayed.
+                pj_details = update_project(project)
+                if pj_details:
+                    details.append(pj_details)
+        with open('project_details.json', 'wb') as f:
+            f.write(json.dumps(details))
+        resp = make_response('woot')
+    else:
+        resp = make_response("I can't do that, Dave", 401)
+    return resp
+
+def update_project(project_url):
+    full_name = '/'.join(urlparse(project_url).path.split('/')[1:])
+    url = '%s/repos/%s' % (GITHUB, full_name)
+    r = requests.get(url)
+    if r.status_code == 200:
+        f = open('projects.json', 'rb')
+        inp = json.loads(f.read())
+        f.close()
+        if not project_url in inp:
+            inp.append(project_url)
+            f = open('projects.json', 'wb')
+            f.write(json.dumps(inp))
+            f.close()
+        return r.json()
+    else:
+        # if it returns an error, well, that's OK for now.
+        return None
 
 if __name__ == "__main__":
     app.run(debug=True, port=7777)
