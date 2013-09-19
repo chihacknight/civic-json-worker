@@ -77,13 +77,17 @@ def update_projects():
     k.key = 'projects.json'
     projects = json.loads(k.get_contents_as_string())
     k.close()
+    print projects
     for project_url in projects:
         # Call task below as normal function so processing
         # is not delayed.
         pj_details = update_project(project_url)
         if pj_details:
             details.append(pj_details)
+    k.key = 'project_details.json'
     k.set_contents_from_string(json.dumps(details))
+    k.set_acl('public-read')
+    k.set_metadata('Content-Type', 'application/json')
     k.close()
     resp = make_response('woot')
     return resp
@@ -101,6 +105,8 @@ def delete_project():
         try:
             projects.remove(project_url)
             k.set_contents_from_string(json.dumps(projects))
+            k.set_acl('public-read')
+            k.set_metadata('Content-Type', 'application/json')
             k.close()
             resp = make_response('Deleted %s' % project_url)
         except ValueError:
@@ -120,9 +126,12 @@ def update_project(project_url):
         k.key = 'projects.json'
         inp = json.loads(k.get_contents_as_string())
         k.close()
+        print inp
         if not project_url in inp:
             inp.append(project_url)
             k.set_contents_from_string(json.dumps(inp))
+            k.set_acl('public-read')
+            k.set_metadata('Content-Type', 'application/json')
             k.close()
         return r.json()
     else:
