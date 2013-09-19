@@ -94,7 +94,7 @@ def update_projects():
 def delete_project():
     if request.form.get('the_key') == FLASK_KEY:
         project_url = request.form.get('project_url')
-        f = open('projects.json', 'rb'):
+        f = open('projects.json', 'rb')
         projects = json.load(f.read())
         f.close()
         try:
