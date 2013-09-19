@@ -4,10 +4,14 @@ from functools import update_wrapper
 import json
 import os
 import requests
+from boto.s3.connection import S3Connection
+from boto.s3.key import Key
 from urlparse import urlparse
 
 THE_KEY = os.environ['FLASK_KEY']
 GITHUB = 'https://api.github.com'
+AWS_KEY = os.environ['AWS_ACCESS_KEY']
+AWS_SECRET = os.environ['AWS_SECRET_KEY']
 
 app = Flask(__name__)
 
@@ -64,29 +68,23 @@ def submit_project():
     else:
         return make_response('The URL you submitted, %s, does not appear to be a valid Github repo' % project_url, 401)
 
-@app.route('/projects/', methods=['GET'])
-@crossdomain(origin="*")
-def get_projects():
-    pjs = []
-    with open('project_details.json', 'rb') as f:
-        pjs = f.read()
-    resp = make_response(pjs)
-    resp.headers['Content-Type'] = 'application/json'
-    return resp
-
 @app.route('/update-projects/', methods=['GET'])
 def update_projects():
     details = []
-    with open('projects.json', 'rb') as f:
-        projects = json.loads(f.read())
-        for project in projects:
-            # Call task below as normal function so processing
-            # is not delayed.
-            pj_details = update_project(project)
-            if pj_details:
-                details.append(pj_details)
-    with open('project_details.json', 'wb') as f:
-        f.write(json.dumps(details))
+    conn = S3Connection(AWS_KEY, AWS_SECRET)
+    bucket = conn.get_bucket('civic-json')
+    k = Key(bucket)
+    k.key = 'projects.json'
+    projects = json.loads(k.get_contents_as_string())
+    k.close()
+    for project_url in projects:
+        # Call task below as normal function so processing
+        # is not delayed.
+        pj_details = update_project(project_url)
+        if pj_details:
+            details.append(pj_details)
+    k.set_contents_from_string(json.dumps(details))
+    k.close()
     resp = make_response('woot')
     return resp
 
@@ -94,13 +92,16 @@ def update_projects():
 def delete_project():
     if request.form.get('the_key') == THE_KEY:
         project_url = request.form.get('project_url')
-        with open('projects.json', 'rb') as f:
-            projects = json.load(f)
+        conn = S3Connection(AWS_KEY, AWS_SECRET)
+        bucket = conn.get_bucket('civic-json')
+        k = Key(bucket)
+        k.key = 'projects.json'
+        projects = json.loads(k.get_contents_as_string())
+        k.close()
         try:
             projects.remove(project_url)
-            f = open('projects.json', 'wb')
-            f.write(json.dumps(projects))
-            f.close()
+            k.set_contents_from_string(json.dumps(projects))
+            k.close()
             resp = make_response('Deleted %s' % project_url)
         except ValueError:
             resp = make_response('%s is not in the registry', 400)
@@ -113,14 +114,16 @@ def update_project(project_url):
     url = '%s/repos/%s' % (GITHUB, full_name)
     r = requests.get(url)
     if r.status_code == 200:
-        f = open('projects.json', 'rb')
-        inp = json.loads(f.read())
-        f.close()
+        conn = S3Connection(AWS_KEY, AWS_SECRET)
+        bucket = conn.get_bucket('civic-json')
+        k = Key(bucket)
+        k.key = 'projects.json'
+        inp = json.loads(k.get_contents_as_string())
+        k.close()
         if not project_url in inp:
             inp.append(project_url)
-            f = open('projects.json', 'wb')
-            f.write(json.dumps(inp))
-            f.close()
+            k.set_contents_from_string(json.dumps(inp))
+            k.close()
         return r.json()
     else:
         # if it returns an error, well, that's OK for now.
