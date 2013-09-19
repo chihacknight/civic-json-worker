@@ -92,7 +92,7 @@ def update_projects():
 
 @app.route('/delete-project/', methods=['POST'])
 def delete_project():
-    if request.form.get('the_key') == FLASK_KEY:
+    if request.form.get('the_key') == THE_KEY:
         project_url = request.form.get('project_url')
         f = open('projects.json', 'rb')
         projects = json.load(f.read())
