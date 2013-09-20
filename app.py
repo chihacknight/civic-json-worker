@@ -10,6 +10,7 @@ from urlparse import urlparse
 
 THE_KEY = os.environ['FLASK_KEY']
 GITHUB = 'https://api.github.com'
+GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
 AWS_KEY = os.environ['AWS_ACCESS_KEY']
 AWS_SECRET = os.environ['AWS_SECRET_KEY']
 
@@ -118,7 +119,8 @@ def delete_project():
 def update_project(project_url):
     full_name = '/'.join(urlparse(project_url).path.split('/')[1:])
     url = '%s/repos/%s' % (GITHUB, full_name)
-    r = requests.get(url)
+    headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
+    r = requests.get(url, headers=headers)
     if r.status_code == 200:
         conn = S3Connection(AWS_KEY, AWS_SECRET)
         bucket = conn.get_bucket('civic-json')
@@ -126,7 +128,6 @@ def update_project(project_url):
         k.key = 'projects.json'
         inp = json.loads(k.get_contents_as_string())
         k.close()
-        print inp
         if not project_url in inp:
             inp.append(project_url)
             k.set_contents_from_string(json.dumps(inp))
