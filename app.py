@@ -71,15 +71,15 @@ def submit_project():
 
 @app.route('/update-projects/', methods=['GET'])
 def update_projects():
-    details = []
     conn = S3Connection(AWS_KEY, AWS_SECRET)
     bucket = conn.get_bucket('civic-json')
     k = Key(bucket)
     k.key = 'projects.json'
-    projects = json.loads(k.get_contents_as_string())
+    project_list = json.loads(k.get_contents_as_string())
     k.close()
-    print projects
-    for project_url in projects:
+    details = []
+    k.close()
+    for project_url in project_list:
         # Call task below as normal function so processing
         # is not delayed.
         pj_details = update_project(project_url)
@@ -126,7 +126,7 @@ def update_project(project_url):
         bucket = conn.get_bucket('civic-json')
         k = Key(bucket)
         k.key = 'projects.json'
-        inp = json.loads(k.get_contents_as_string())
+        inp = list(set(json.loads(k.get_contents_as_string())))
         k.close()
         if not project_url in inp:
             inp.append(project_url)
