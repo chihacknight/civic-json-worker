@@ -161,11 +161,13 @@ def update_project(project_url):
             if r.status_code == 200:
                 for contributor in r.json():
                     cont = {}
-                    cont['login'] = contributor.get('login')
-                    cont['avatar_url'] = contributor.get('avatar_url')
-                    cont['html_url'] = contributor.get('html_url')
-                    cont['contributions'] = contributor.get('contributions')
-                    detail['contributors'].append(cont)
+                    login = contributor.get('login')
+                    if login != owner.get('login'):
+                        cont['login'] = login
+                        cont['avatar_url'] = contributor.get('avatar_url')
+                        cont['html_url'] = contributor.get('html_url')
+                        cont['contributions'] = contributor.get('contributions')
+                        detail['contributors'].append(cont)
         return detail
     else:
         # if it returns an error, well, that's OK for now.
