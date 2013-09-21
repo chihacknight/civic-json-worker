@@ -134,7 +134,39 @@ def update_project(project_url):
             k.set_acl('public-read')
             k.set_metadata('Content-Type', 'application/json')
             k.close()
-        return r.json()
+        repo = r.json()
+        owner = repo.get('owner')
+        detail = {
+            'id': repo.get('id'),
+            'name': repo.get('name'),
+            'description': repo.get('description'),
+            'homepage': repo.get('homepage'),
+            'html_url': repo.get('html_url'),
+            'language': repo.get('language'),
+            'watchers_count': repo.get('watchers_count'),
+            'forks_count': repo.get('forks_count'),
+            'open_issues': repo.get('open_issues'),
+            'contributors_url': repo.get('contributors_url'),
+            'created_at': repo.get('created_at'),
+            'updated_at': repo.get('updated_at'),
+        }
+        detail['owner'] = {
+            'login': owner.get('login'),
+            'html_url': owner.get('html_url'),
+            'avatar_url': owner.get('avatar_url'),
+        }
+        detail['contributors'] = []
+        if detail.get('contributors_url'):
+            r = requests.get(detail.get('contributors_url'))
+            if r.status_code == 200:
+                for contributor in r.json():
+                    cont = {}
+                    cont['login'] = contributor.get('login')
+                    cont['avatar_url'] = contributor.get('avatar_url')
+                    cont['html_url'] = contributor.get('html_url')
+                    cont['contributions'] = contributor.get('contributions')
+                    detail['contributors'].append(cont)
+        return detail
     else:
         # if it returns an error, well, that's OK for now.
         return None
