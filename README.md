@@ -25,19 +25,53 @@ So humans will be responsible for one thing: __deciding what gets tracked__.
 The rest is up to computers. When the ``/update-projects/`` path is hit on this app, it loops over the projects in the list and captures something like this:
 
 ``` json
-* title
-* description
-* website URL (if any)
-* contributors (list of people)
-* programming language
-* how active / last updated
-* number of stars/forks
-* number of issues?
+[
+    {
+        "contributors": [
+            {
+                "avatar_url": "https://0.gravatar.com/avatar/5e5eb188a0e4d3a7c8f38ee0fc3a6cbd?d=https%3A%2F%2Fidenticons.github.com%2Fd8c3ef3ed05a213a7225bf5e6e46101a.png", 
+                "contributions": 51, 
+                "html_url": "https://github.com/derekeder", 
+                "login": "derekeder"
+            }, 
+            {
+                "avatar_url": "https://2.gravatar.com/avatar/813d23c289052af417387a9270d0da31?d=https%3A%2F%2Fidenticons.github.com%2Ffa9357bb22fd993fc9795619c7e1d4f7.png", 
+                "contributions": 46, 
+                "html_url": "https://github.com/fgregg", 
+                "login": "fgregg"
+            }, 
+            {
+                "avatar_url": "https://2.gravatar.com/avatar/1d0c5faee140af87d7d6967bc946ecc6?d=https%3A%2F%2Fidenticons.github.com%2F44e80db9ed8527f429c969e804432b0f.png", 
+                "contributions": 9, 
+                "html_url": "https://github.com/evz", 
+                "login": "evz"
+            }
+        ], 
+        "contributors_url": "https://api.github.com/repos/datamade/csvdedupe/contributors", 
+        "created_at": "2013-07-11T14:23:33Z", 
+        "description": "Command line tool for deduplicating CSV files", 
+        "forks_count": 2, 
+        "homepage": null, 
+        "html_url": "https://github.com/datamade/csvdedupe", 
+        "id": 11343900, 
+        "language": "Python", 
+        "name": "csvdedupe", 
+        "open_issues": 8, 
+        "owner": {
+            "avatar_url": "https://2.gravatar.com/avatar/0a89207d38feff1dcd938bdc1e4a9b5e?d=https%3A%2F%2Fidenticons.github.com%2F3424042f8cb2b04950903794ad9c8daf.png", 
+            "html_url": "https://github.com/datamade", 
+            "login": "datamade"
+        }, 
+        "updated_at": "2013-09-20T06:32:39Z", 
+        "watchers_count": 26
+    },
+    ...
+]
 ```
 
-This data itself will be served up by the worker as its own JSON file, for [use on this site](http://opengovhacknight.org/projects.html) for listing/sorting/searching projects. __bonus:__ anyone will be able to use this JSON file for their own purposes. Take a look at [Microjs.com](http://microjs.com/#) as an example of this.
-
-Also, we could easily create a submit form so anyone can submit a Github URL to this list.
+This data is stored as JSON in a public S3 bucket with a CORS configuration that allows it to be served loaded via 
+an Ajax call, for [use on this site](http://opengovhacknight.org/projects.html) for listing/sorting/searching projects. 
+__bonus:__ anyone can use [this JSON file](https://s3.amazonaws.com/civic-json/project_details.json) for their own purposes.
 
 ## Benefits
 
@@ -48,8 +82,28 @@ By pushing everything on to Github, we will have very little to maintain, conten
 * make sure their description and website urls are up to date
 * use the issue tracker
 
-## Feedback
+## Setup this app
 
-@ryanbriones, this derives from the [civic.json](https://github.com/ryanbriones/civicneeds/issues/4) that has been discussed with @robdodson. Any thoughts? @GovInTrenches?
+Propping this sucker up for oneself is pretty simple. Howver, there are some basic requirements which can be gotten 
+in the standard Python fashion (assuming you are working in a [virtualenv](https://pypi.python.org/pypi/virtualenv)):
 
+``` bash
+$ pip install -r requirements.txt
+```
 
+Besides that, there are a few environmental variables that you'll need to set:
+
+``` bash
+$ export FLASK_KEY=[whatever you want] # This is a string that you'll check to make sure that only trusted people are deleting things
+$ export GITHUB_TOKEN=[Github API token] # Read about setting that up here: http://developer.github.com/v3/oauth/
+$ export S3_BUCKET=[Name of the bucket] # This is the bucket where you'll store the JSON files 
+$ export AWS_ACCESS_KEY=[Amazon Web Services Key] # This will need access to the bucket above
+$ export AWS_SECRET_KEY=[Amazon Web Services Secret] # This will need access to the bucket above
+```
+
+Probably easiest placed in the .bashrc (or the like) of 
+the user that the app is running as rather than manually set but you get the idea...
+
+### Want to help? Have ideas to make this better?
+
+The issue tracker is actively watched and pull requests are welcome!

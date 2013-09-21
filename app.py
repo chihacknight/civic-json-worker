@@ -13,6 +13,7 @@ GITHUB = 'https://api.github.com'
 GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
 AWS_KEY = os.environ['AWS_ACCESS_KEY']
 AWS_SECRET = os.environ['AWS_SECRET_KEY']
+S3_BUCKET = os.environ['S3_BUCKET']
 
 app = Flask(__name__)
 
@@ -72,7 +73,7 @@ def submit_project():
 @app.route('/update-projects/', methods=['GET'])
 def update_projects():
     conn = S3Connection(AWS_KEY, AWS_SECRET)
-    bucket = conn.get_bucket('civic-json')
+    bucket = conn.get_bucket(S3_BUCKET)
     k = Key(bucket)
     k.key = 'projects.json'
     project_list = json.loads(k.get_contents_as_string())
@@ -98,7 +99,7 @@ def delete_project():
     if request.form.get('the_key') == THE_KEY:
         project_url = request.form.get('project_url')
         conn = S3Connection(AWS_KEY, AWS_SECRET)
-        bucket = conn.get_bucket('civic-json')
+        bucket = conn.get_bucket(S3_BUCKET)
         k = Key(bucket)
         k.key = 'projects.json'
         projects = json.loads(k.get_contents_as_string())
@@ -123,7 +124,7 @@ def update_project(project_url):
     r = requests.get(url, headers=headers)
     if r.status_code == 200:
         conn = S3Connection(AWS_KEY, AWS_SECRET)
-        bucket = conn.get_bucket('civic-json')
+        bucket = conn.get_bucket(S3_BUCKET)
         k = Key(bucket)
         k.key = 'projects.json'
         inp = list(set(json.loads(k.get_contents_as_string())))
