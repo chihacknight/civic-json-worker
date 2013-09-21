@@ -157,7 +157,7 @@ def update_project(project_url):
         }
         detail['contributors'] = []
         if detail.get('contributors_url'):
-            r = requests.get(detail.get('contributors_url'))
+            r = requests.get(detail.get('contributors_url'), headers=headers)
             if r.status_code == 200:
                 for contributor in r.json():
                     cont = {}
