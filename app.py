@@ -7,6 +7,8 @@ import requests
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from urlparse import urlparse
+from operator import itemgetter
+from itertools import groupby
 
 THE_KEY = os.environ['FLASK_KEY']
 GITHUB = 'https://api.github.com'
@@ -91,6 +93,11 @@ def update_projects():
     k.set_acl('public-read')
     k.set_metadata('Content-Type', 'application/json')
     k.close()
+    k.key = 'people.json'
+    k.set_contents_from_string(json.dumps(get_people_totals(details)))
+    k.set_acl('public-read')
+    k.set_metadata('Content-Type', 'application/json')
+    k.close()
     resp = make_response('woot')
     return resp
 
@@ -116,6 +123,29 @@ def delete_project():
     else:
         resp = make_response("I can't do that Dave", 401)
     return resp
+
+def get_people_totals(details):
+    all_users = []
+    for project in details:
+        all_users.extend(project['contributors'])
+    sorted_users = sorted(all_users, key=itemgetter('login'))
+    grouped_users = []
+    for k, g in groupby(sorted_users, key=itemgetter('login')):
+        grouped_users.append({k:list(g)})
+    user_totals = []
+    for user in grouped_users:
+        login = user.keys()[0]
+        repos = user.values()[0]
+        repositories = len(repos)
+        contributions = sum([c['contributions'] for c in repos])
+        user_totals.append({
+            'login': login,
+            'repositories': repositories,
+            'contributions': contributions,
+            'avatar_url': repos[0]['avatar_url'],
+            'html_url': repos[0]['html_url'],
+        })
+    return user_totals
 
 def update_project(project_url):
     full_name = '/'.join(urlparse(project_url).path.split('/')[1:])
