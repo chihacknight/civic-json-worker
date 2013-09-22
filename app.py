@@ -1,4 +1,4 @@
-from flask import Flask, make_response, request, current_app, abort
+from flask import Flask, make_response, request, current_app
 from datetime import timedelta
 from functools import update_wrapper
 import json
@@ -83,8 +83,6 @@ def update_projects():
     details = []
     k.close()
     for project_url in project_list:
-        # Call task below as normal function so processing
-        # is not delayed.
         pj_details = update_project(project_url)
         if pj_details:
             details.append(pj_details)
@@ -121,7 +119,7 @@ def delete_project():
         except ValueError:
             resp = make_response('%s is not in the registry', 400)
     else:
-        resp = make_response("I can't do that Dave", 401)
+        resp = make_response("I can't do that Dave", 400)
     return resp
 
 def get_people_totals(details):
@@ -134,17 +132,23 @@ def get_people_totals(details):
         grouped_users.append({k:list(g)})
     user_totals = []
     for user in grouped_users:
-        login = user.keys()[0]
+        user_info = {}
+        user_info['login'] = user.keys()[0]
         repos = user.values()[0]
-        repositories = len(repos)
-        contributions = sum([c['contributions'] for c in repos])
-        user_totals.append({
-            'login': login,
-            'repositories': repositories,
-            'contributions': contributions,
-            'avatar_url': repos[0]['avatar_url'],
-            'html_url': repos[0]['html_url'],
-        })
+        user_info['repositories'] = len(repos)
+        user_info['contributions'] = sum([c['contributions'] for c in repos])
+        user_info['avatar_url'] = repos[0]['avatar_url']
+        user_info['html_url'] = repos[0]['html_url']
+        headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
+        user_details = requests.get('%s/users/%s' % (GITHUB, user_info['login']), headers=headers)
+        if user_details.status_code == 200:
+            user_info['name'] = user_details.json().get('name')
+            user_info['company'] = user_details.json().get('company')
+            user_info['blog'] = user_details.json().get('blog')
+            user_info['location'] = user_details.json().get('location')
+        else:
+            print user_details.content
+        user_totals.append(user_info)
     return user_totals
 
 def update_project(project_url):
