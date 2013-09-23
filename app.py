@@ -96,6 +96,12 @@ def update_projects():
     k.set_acl('public-read')
     k.set_metadata('Content-Type', 'application/json')
     k.close()
+    orgs = [d for d in details if d['owner']['type'] == 'Organization']
+    k.key = 'organizations.json'
+    k.set_contents_from_string(json.dumps(get_org_totals(orgs)))
+    k.set_acl('public-read')
+    k.set_metadata('Content-Type', 'application/json')
+    k.close()
     resp = make_response('woot')
     return resp
 
@@ -122,6 +128,39 @@ def delete_project():
         resp = make_response("I can't do that Dave", 400)
     return resp
 
+def build_user(user):
+    user_info = {}
+    user_info['login'] = user.keys()[0]
+    repos = user.values()[0]
+    user_info['repositories'] = len(repos)
+    try:
+        user_info['contributions'] = sum([c['contributions'] for c in repos])
+    except KeyError:
+        pass
+    user_info['avatar_url'] = repos[0]['avatar_url']
+    user_info['html_url'] = repos[0]['html_url']
+    headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
+    user_details = requests.get('%s/users/%s' % (GITHUB, user_info['login']), headers=headers)
+    if user_details.status_code == 200:
+        user_info['name'] = user_details.json().get('name')
+        user_info['company'] = user_details.json().get('company')
+        user_info['blog'] = user_details.json().get('blog')
+        user_info['location'] = user_details.json().get('location')
+    return user_info
+
+def get_org_totals(details):
+    all_orgs = []
+    for project in details:
+      all_orgs.append({'login': project['owner']['login'], 'repo': project})
+    sorted_orgs = sorted(all_orgs, key=itemgetter('login'))
+    grouped_orgs = []
+    for k,g in groupby(sorted_orgs, key=itemgetter('login')):
+        grouped_orgs.append({k:[r['repo']['owner'] for r in g]})
+    org_totals = []
+    for org in grouped_orgs:
+        org_totals.append(build_user(org))
+    return org_totals
+
 def get_people_totals(details):
     all_users = []
     for project in details:
@@ -132,23 +171,7 @@ def get_people_totals(details):
         grouped_users.append({k:list(g)})
     user_totals = []
     for user in grouped_users:
-        user_info = {}
-        user_info['login'] = user.keys()[0]
-        repos = user.values()[0]
-        user_info['repositories'] = len(repos)
-        user_info['contributions'] = sum([c['contributions'] for c in repos])
-        user_info['avatar_url'] = repos[0]['avatar_url']
-        user_info['html_url'] = repos[0]['html_url']
-        headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
-        user_details = requests.get('%s/users/%s' % (GITHUB, user_info['login']), headers=headers)
-        if user_details.status_code == 200:
-            user_info['name'] = user_details.json().get('name')
-            user_info['company'] = user_details.json().get('company')
-            user_info['blog'] = user_details.json().get('blog')
-            user_info['location'] = user_details.json().get('location')
-        else:
-            print user_details.content
-        user_totals.append(user_info)
+        user_totals.append(build_user(user))
     return user_totals
 
 def update_project(project_url):
@@ -189,6 +212,7 @@ def update_project(project_url):
             'login': owner.get('login'),
             'html_url': owner.get('html_url'),
             'avatar_url': owner.get('avatar_url'),
+            'type': owner.get('type'),
         }
         detail['contributors'] = []
         if detail.get('contributors_url'):
