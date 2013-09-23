@@ -70,7 +70,7 @@ def submit_project():
         resp.headers['Content-Type'] = 'application/json'
         return resp
     else:
-        return make_response('The URL you submitted, %s, does not appear to be a valid Github repo' % project_url, 401)
+        return make_response('The URL you submitted, %s, does not appear to be a valid Github repo' % project_url, 400)
 
 @app.route('/update-projects/', methods=['GET'])
 def update_projects():
@@ -175,7 +175,7 @@ def get_people_totals(details):
     return user_totals
 
 def update_project(project_url):
-    full_name = '/'.join(urlparse(project_url).path.split('/')[1:])
+    full_name = '/'.join(urlparse(project_url).path.split('/')[1:3])
     url = '%s/repos/%s' % (GITHUB, full_name)
     headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
     r = requests.get(url, headers=headers)
