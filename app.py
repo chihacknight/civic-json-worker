@@ -87,19 +87,19 @@ def update_projects():
         if pj_details:
             details.append(pj_details)
     k.key = 'project_details.json'
-    k.set_metadata('Content-Type', 'application/json')
     k.set_contents_from_string(json.dumps(details))
+    k.set_metadata('Content-Type', 'application/json')
     k.set_acl('public-read')
     k.close()
     k.key = 'people.json'
-    k.set_metadata('Content-Type', 'application/json')
     k.set_contents_from_string(json.dumps(get_people_totals(details)))
+    k.set_metadata('Content-Type', 'application/json')
     k.set_acl('public-read')
     k.close()
     orgs = [d for d in details if d['owner']['type'] == 'Organization']
     k.key = 'organizations.json'
-    k.set_metadata('Content-Type', 'application/json')
     k.set_contents_from_string(json.dumps(get_org_totals(orgs)))
+    k.set_metadata('Content-Type', 'application/json')
     k.set_acl('public-read')
     k.close()
     resp = make_response('woot')
