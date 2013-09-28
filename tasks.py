@@ -31,6 +31,10 @@ def update_projects():
         pj_details = update_project(project_url)
         if pj_details:
             details.append(pj_details)
+        else:
+            # if we get a non-200 back from Github, chances are we are being
+            # throttled. Return nothing and let the next attempt pick it up. 
+            return 'Github is throttling. Pick it up again on the next hour.'
     k.key = 'project_details.json'
     k.set_metadata('Content-Type', 'application/json')
     k.set_contents_from_string(json.dumps(details))
@@ -111,9 +115,9 @@ def update_project(project_url):
         k.close()
         if not project_url in inp:
             inp.append(project_url)
-            k.set_acl('public-read')
             k.set_metadata('Content-Type', 'application/json')
             k.set_contents_from_string(json.dumps(inp))
+            k.set_acl('public-read')
             k.close()
         repo = r.json()
         owner = repo.get('owner')

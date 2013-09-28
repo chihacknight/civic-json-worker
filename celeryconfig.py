@@ -10,6 +10,6 @@ CELERY_DEFAULT_QUEUE = 'civic-json'
 CELERYBEAT_SCHEDULE = {
     'update-projects': {
         'task': 'tasks.update_projects',
-        'schedule': crontab(minute='*/1'),
+        'schedule': crontab(minute='*/10'),
      },
 }
