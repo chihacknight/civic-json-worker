@@ -41,6 +41,7 @@ def update_projects():
 
 @celery.task
 def backup_data():
+    os.setuid(1001)
     repo_path = os.path.join(os.path.abspath(os.curdir), 'data')
     repo = Repo(repo_path)
     g = repo.git
