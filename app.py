@@ -60,7 +60,7 @@ def crossdomain(origin=None, methods=None, headers=None,
 @crossdomain(origin="*")
 def submit_project():
     project_url = request.form.get('project_url')
-    project_details = update_project.delay(project_url)
+    project_details = update_project(project_url)
     if project_details:
         resp = make_response(json.dumps(project_details))
         resp.headers['Content-Type'] = 'application/json'
