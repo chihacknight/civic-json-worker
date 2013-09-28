@@ -148,6 +148,9 @@ def update_project(project_url):
                     cont['html_url'] = contributor.get('html_url')
                     cont['contributions'] = contributor.get('contributions')
                     detail['contributors'].append(cont)
+        part = requests.get('%s/stats/participation' % url, headers=headers)
+        if part.status_code == 200:
+            detail['participation'] = part.json()['all']
         return detail
     elif r.status_code == 404:
         # Can't find the project on gitub so scrub it from the list
