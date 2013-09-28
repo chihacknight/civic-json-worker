@@ -106,7 +106,8 @@ def update_project(project_url):
         bucket = conn.get_bucket(S3_BUCKET)
         k = Key(bucket)
         k.key = 'projects.json'
-        inp = list(set(json.loads(k.get_contents_as_string())))
+        inp_list = list(set(json.loads(k.get_contents_as_string())))
+        inp = [l.rstrip('/') for l in inp_list]
         k.close()
         if not project_url in inp:
             inp.append(project_url)
