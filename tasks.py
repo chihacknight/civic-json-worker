@@ -124,9 +124,9 @@ def update_project(project_url):
             'html_url': repo.get('html_url'),
             'language': repo.get('language'),
             'watchers_count': repo.get('watchers_count'),
+            'contributors_url': repo.get('contributors_url'),
             'forks_count': repo.get('forks_count'),
             'open_issues': repo.get('open_issues'),
-            'contributors_url': repo.get('contributors_url'),
             'created_at': repo.get('created_at'),
             'updated_at': repo.get('updated_at'),
         }
@@ -143,12 +143,14 @@ def update_project(project_url):
                 for contributor in r.json():
                     cont = {}
                     login = contributor.get('login')
-                    if login != owner.get('login'):
-                        cont['login'] = login
-                        cont['avatar_url'] = contributor.get('avatar_url')
-                        cont['html_url'] = contributor.get('html_url')
-                        cont['contributions'] = contributor.get('contributions')
-                        detail['contributors'].append(cont)
+                    cont['owner'] = False
+                    if login == owner.get('login'):
+                        cont['owner'] = True
+                    cont['login'] = login
+                    cont['avatar_url'] = contributor.get('avatar_url')
+                    cont['html_url'] = contributor.get('html_url')
+                    cont['contributions'] = contributor.get('contributions')
+                    detail['contributors'].append(cont)
         return detail
     else:
         # if it returns an error, well, that's OK for now.
