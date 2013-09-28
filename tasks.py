@@ -5,6 +5,8 @@ import requests
 from urlparse import urlparse
 from operator import itemgetter
 from itertools import groupby
+from git import Repo, GitCommandError
+from datetime import datetime
 
 celery = Celery('tasks')
 celery.config_from_object('celeryconfig')
@@ -36,6 +38,16 @@ def update_projects():
     f.write(json.dumps(get_org_totals(orgs)))
     f.close()
     return 'Updated'
+
+@celery.task
+def backup_data():
+    repo_path = os.path.join(os.path.abspath(os.curdir), 'data')
+    repo = Repo(repo_path)
+    g = repo.git
+    g.add(repo_path)
+    g.commit(message="Backed up at %s" % datetime.now().isoformat(), author="eric.vanzanten@gmail.com")
+    g.push()
+    return None
 
 def build_user(user):
     user_info = {}
@@ -83,7 +95,6 @@ def get_people_totals(details):
         user_totals.append(build_user(user))
     return user_totals
 
-@celery.task
 def update_project(project_url):
     full_name = '/'.join(urlparse(project_url).path.split('/')[1:3])
     url = '%s/repos/%s' % (GITHUB, full_name)
