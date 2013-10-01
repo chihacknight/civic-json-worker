@@ -28,14 +28,14 @@ def update_projects():
         if pj_details:
             details.append(pj_details)
     f = open('data/project_details.json', 'wb')
-    f.write(json.dumps(details))
+    f.write(json.dumps(details, indent=4))
     f.close()
     f = open('data/people.json', 'wb')
-    f.write(json.dumps(get_people_totals(details)))
+    f.write(json.dumps(get_people_totals(details), indent=4))
     f.close()
     orgs = [d for d in details if d['owner']['type'] == 'Organization']
     f = open('data/organizations.json', 'wb')
-    f.write(json.dumps(get_org_totals(orgs)))
+    f.write(json.dumps(get_org_totals(orgs), indent=4))
     f.close()
     return 'Updated'
 
@@ -109,7 +109,7 @@ def update_project(project_url):
         if not project_url in inp:
             inp.append(project_url)
             f = open('data/projects.json', 'wb')
-            f.write(json.dumps(inp))
+            f.write(json.dumps(inp, indent=4))
             f.close()
         repo = r.json()
         owner = repo.get('owner')
@@ -159,7 +159,7 @@ def update_project(project_url):
         f.close()
         projects.remove(project_url)
         f = open('data/projects.json', 'wb')
-        f.write(json.dumps(projects))
+        f.write(json.dumps(projects, indent=4))
         f.close()
         return None
     elif r.status_code == 403: 
