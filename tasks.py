@@ -140,6 +140,8 @@ def update_project(project_url):
                 for contributor in r.json():
                     cont = {}
                     login = contributor.get('login')
+                    if login == 'invalid-email-address':
+                        continue
                     cont['owner'] = False
                     if login == owner.get('login'):
                         cont['owner'] = True
