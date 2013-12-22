@@ -126,6 +126,7 @@ def update_project(project_url):
             'open_issues': repo.get('open_issues'),
             'created_at': repo.get('created_at'),
             'updated_at': repo.get('updated_at'),
+            'pushed_at': repo.get('pushed_at'),
         }
         detail['owner'] = {
             'login': owner.get('login'),
@@ -140,6 +141,8 @@ def update_project(project_url):
                 for contributor in r.json():
                     cont = {}
                     login = contributor.get('login')
+                    if login == 'invalid-email-address':
+                        continue
                     cont['owner'] = False
                     if login == owner.get('login'):
                         cont['owner'] = True
