@@ -69,9 +69,12 @@ The rest is up to computers. When the ``/update-projects/`` path is hit on this 
 ]
 ```
 
-This data is stored as JSON in a public S3 bucket with a CORS configuration that allows it to be served loaded via 
+This data is hosted on a publicly available endpoint as JSON with a CORS configuration that allows it to be loaded via 
 an Ajax call, for [use on this site](http://opengovhacknight.org/projects.html) for listing/sorting/searching projects. 
-__bonus:__ anyone can use [this JSON file](https://s3.amazonaws.com/civic-json/project_details.json) for their own purposes.
+__bonus:__ anyone can use [this JSON
+file](http://worker.opengovhacknight.org/data/project_details.json) for their
+own purposes. Details on setting up a CORS configuration for nginx can be found
+[here](https://github.com/open-city/civic-json-worker/issues/16#issuecomment-28759993)
 
 ## Benefits
 
