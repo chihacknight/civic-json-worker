@@ -1,57 +1,54 @@
 import os
 import json
 from celery import Celery
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
 import requests
 from urlparse import urlparse
 from operator import itemgetter
 from itertools import groupby
+from git import Repo, GitCommandError
+from datetime import datetime
 
 celery = Celery('tasks')
 celery.config_from_object('celeryconfig')
 
 GITHUB = 'https://api.github.com'
 GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
-AWS_KEY = os.environ['AWS_ACCESS_KEY']
-AWS_SECRET = os.environ['AWS_SECRET_KEY']
-S3_BUCKET = os.environ['S3_BUCKET']
 
 @celery.task
 def update_projects():
-    conn = S3Connection(AWS_KEY, AWS_SECRET)
-    bucket = conn.get_bucket(S3_BUCKET)
-    k = Key(bucket)
-    k.key = 'projects.json'
-    project_list = json.loads(k.get_contents_as_string())
-    k.close()
+    f = open('data/projects.json', 'rb')
+    project_list = json.loads(f.read())
+    f.close()
     details = []
-    k.close()
     for project_url in project_list:
-        pj_details = update_project(project_url)
+        try:
+            pj_details = update_project(project_url)
+        except IOError:
+            return 'Github is throttling. Just gonna try again after limit is reset.'
         if pj_details:
             details.append(pj_details)
-        else:
-            # if we get a non-200 back from Github, chances are we are being
-            # throttled. Return nothing and let the next attempt pick it up. 
-            return 'Github is throttling. Pick it up again on the next hour.'
-    k.key = 'project_details.json'
-    k.set_metadata('Content-Type', 'application/json')
-    k.set_contents_from_string(json.dumps(details))
-    k.set_acl('public-read')
-    k.close()
-    k.key = 'people.json'
-    k.set_metadata('Content-Type', 'application/json')
-    k.set_contents_from_string(json.dumps(get_people_totals(details)))
-    k.set_acl('public-read')
-    k.close()
+    f = open('data/project_details.json', 'wb')
+    f.write(json.dumps(details, indent=4))
+    f.close()
+    f = open('data/people.json', 'wb')
+    f.write(json.dumps(get_people_totals(details), indent=4))
+    f.close()
     orgs = [d for d in details if d['owner']['type'] == 'Organization']
-    k.key = 'organizations.json'
-    k.set_metadata('Content-Type', 'application/json')
-    k.set_contents_from_string(json.dumps(get_org_totals(orgs)))
-    k.set_acl('public-read')
-    k.close()
+    f = open('data/organizations.json', 'wb')
+    f.write(json.dumps(get_org_totals(orgs), indent=4))
+    f.close()
     return 'Updated'
+
+@celery.task
+def backup_data():
+    os.setuid(1001)
+    repo_path = os.path.join(os.path.abspath(os.curdir), 'data')
+    repo = Repo(repo_path)
+    g = repo.git
+    g.add(repo_path)
+    g.commit(message="Backed up at %s" % datetime.now().isoformat(), author="eric.vanzanten@gmail.com")
+    g.push()
+    return None
 
 def build_user(user):
     user_info = {}
@@ -99,26 +96,21 @@ def get_people_totals(details):
         user_totals.append(build_user(user))
     return user_totals
 
-@celery.task
 def update_project(project_url):
     full_name = '/'.join(urlparse(project_url).path.split('/')[1:3])
     url = '%s/repos/%s' % (GITHUB, full_name)
     headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
     r = requests.get(url, headers=headers)
     if r.status_code == 200:
-        conn = S3Connection(AWS_KEY, AWS_SECRET)
-        bucket = conn.get_bucket(S3_BUCKET)
-        k = Key(bucket)
-        k.key = 'projects.json'
-        inp_list = list(set(json.loads(k.get_contents_as_string())))
+        f = open('data/projects.json', 'rb')
+        inp_list = list(set(json.loads(f.read())))
+        f.close()
         inp = [l.rstrip('/') for l in inp_list]
-        k.close()
         if not project_url in inp:
             inp.append(project_url)
-            k.set_metadata('Content-Type', 'application/json')
-            k.set_contents_from_string(json.dumps(inp))
-            k.set_acl('public-read')
-            k.close()
+            f = open('data/projects.json', 'wb')
+            f.write(json.dumps(inp, indent=4))
+            f.close()
         repo = r.json()
         owner = repo.get('owner')
         detail = {
@@ -134,6 +126,7 @@ def update_project(project_url):
             'open_issues': repo.get('open_issues'),
             'created_at': repo.get('created_at'),
             'updated_at': repo.get('updated_at'),
+            'pushed_at': repo.get('pushed_at'),
         }
         detail['owner'] = {
             'login': owner.get('login'),
@@ -148,6 +141,8 @@ def update_project(project_url):
                 for contributor in r.json():
                     cont = {}
                     login = contributor.get('login')
+                    if login == 'invalid-email-address':
+                        continue
                     cont['owner'] = False
                     if login == owner.get('login'):
                         cont['owner'] = True
@@ -156,7 +151,19 @@ def update_project(project_url):
                     cont['html_url'] = contributor.get('html_url')
                     cont['contributions'] = contributor.get('contributions')
                     detail['contributors'].append(cont)
+        part = requests.get('%s/stats/participation' % url, headers=headers)
+        if part.status_code == 200:
+            detail['participation'] = part.json()['all']
         return detail
-    else:
-        # if it returns an error, well, that's OK for now.
+    elif r.status_code == 404:
+        # Can't find the project on gitub so scrub it from the list
+        f = open('data/projects.json', 'rb')
+        projects = json.loads(f.read())
+        f.close()
+        projects.remove(project_url)
+        f = open('data/projects.json', 'wb')
+        f.write(json.dumps(projects, indent=4))
+        f.close()
         return None
+    elif r.status_code == 403: 
+        raise IOError('Over rate limit')

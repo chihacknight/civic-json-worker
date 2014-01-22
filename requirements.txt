@@ -3,3 +3,4 @@ Flask==0.10.1
 gunicorn<0.18.0
 boto==2.13.3
 celery==3.0.23
+GitPython

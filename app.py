@@ -4,14 +4,9 @@ from functools import update_wrapper
 import json
 import os
 import requests
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
 from tasks import update_project, update_projects as update_pjs_task
 
 THE_KEY = os.environ['FLASK_KEY']
-AWS_KEY = os.environ['AWS_ACCESS_KEY']
-AWS_SECRET = os.environ['AWS_SECRET_KEY']
-S3_BUCKET = os.environ['S3_BUCKET']
 
 app = Flask(__name__)
 
@@ -105,18 +100,14 @@ def update_projects():
 def delete_project():
     if request.form.get('the_key') == THE_KEY:
         project_url = request.form.get('project_url')
-        conn = S3Connection(AWS_KEY, AWS_SECRET)
-        bucket = conn.get_bucket(S3_BUCKET)
-        k = Key(bucket)
-        k.key = 'projects.json'
-        projects = json.loads(k.get_contents_as_string())
-        k.close()
+        f = open('data/projects.json', 'rb')
+        projects = json.loads(f.read())
+        f.close()
         try:
             projects.remove(project_url)
-            k.set_acl('public-read')
-            k.set_metadata('Content-Type', 'application/json')
-            k.set_contents_from_string(json.dumps(projects))
-            k.close()
+            f = open('data/projects.json', 'wb')
+            f.write(json.dumps(projects))
+            f.close()
             resp = make_response('Deleted %s' % project_url)
         except ValueError:
             resp = make_response('%s is not in the registry', 400)
