@@ -14,6 +14,6 @@ CELERYBEAT_SCHEDULE = {
      },
     'backup-projects': {
         'task': 'tasks.backup_data',
-        'schedule': crontab(minute='0', hour='*/1'),
+        'schedule': crontab(minute='0', hour='*/6'),
      },
 }
