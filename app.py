@@ -63,39 +63,6 @@ def submit_project():
     else:
         return make_response('The URL you submitted, %s, does not appear to be a valid Github repo' % project_url, 400)
 
-@app.route('/update-projects/', methods=['GET'])
-def update_projects():
-    conn = S3Connection(AWS_KEY, AWS_SECRET)
-    bucket = conn.get_bucket(S3_BUCKET)
-    k = Key(bucket)
-    k.key = 'projects.json'
-    project_list = json.loads(k.get_contents_as_string())
-    k.close()
-    details = []
-    k.close()
-    for project_url in project_list:
-        pj_details = update_project(project_url)
-        if pj_details:
-            details.append(pj_details)
-    k.key = 'project_details.json'
-    k.set_contents_from_string(json.dumps(details))
-    k.set_metadata('Content-Type', 'application/json')
-    k.set_acl('public-read')
-    k.close()
-    k.key = 'people.json'
-    k.set_contents_from_string(json.dumps(get_people_totals(details)))
-    k.set_metadata('Content-Type', 'application/json')
-    k.set_acl('public-read')
-    k.close()
-    orgs = [d for d in details if d['owner']['type'] == 'Organization']
-    k.key = 'organizations.json'
-    k.set_contents_from_string(json.dumps(get_org_totals(orgs)))
-    k.set_metadata('Content-Type', 'application/json')
-    k.set_acl('public-read')
-    k.close()
-    resp = make_response('woot')
-    return resp
-
 @app.route('/delete-project/', methods=['POST'])
 def delete_project():
     if request.form.get('the_key') == THE_KEY:
