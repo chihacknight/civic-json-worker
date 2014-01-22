@@ -96,6 +96,23 @@ def get_people_totals(details):
         user_totals.append(build_user(user))
     return user_totals
 
+def update_issues(project_url):
+    full_name = '/'.join(urlparse(project_url).path.split('/')[1:3])
+    url = '%s/repos/%s/issues' % (GITHUB, full_name)
+    headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
+    params = {'labels': 'project-needs'}
+    r = requests.get(url, headers=headers, params=params)
+    all_issues = []
+    if r.status_code == 200:
+        for issue in r.json():
+            all_issues.append({
+                'title': issue.get('title'),
+                'issue_url': issue.get('url'),
+            })
+        return all_issues
+    else:
+        return []
+
 def update_project(project_url):
     full_name = '/'.join(urlparse(project_url).path.split('/')[1:3])
     url = '%s/repos/%s' % (GITHUB, full_name)
@@ -134,6 +151,7 @@ def update_project(project_url):
             'avatar_url': owner.get('avatar_url'),
             'type': owner.get('type'),
         }
+        detail['project_needs'] = update_issues(project_url)
         detail['contributors'] = []
         if detail.get('contributors_url'):
             r = requests.get(detail.get('contributors_url'), headers=headers)
