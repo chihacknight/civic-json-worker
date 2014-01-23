@@ -107,7 +107,7 @@ def update_issues(project_url):
         for issue in r.json():
             all_issues.append({
                 'title': issue.get('title'),
-                'issue_url': issue.get('url'),
+                'issue_url': issue.get('html_url'),
             })
         return all_issues
     else:
