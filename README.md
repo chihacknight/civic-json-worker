@@ -2,7 +2,7 @@
 
 [Flask](http://flask.pocoo.org) app for tracking opengov projects in Chicago.
 
-***NOTE**: civic-json-worker is being expanded to work for any city. Development of this project has moved to Code for America's [civic-json-worker fork](https://github.com/codeforamerica/civic-json-worker#contribute).*
+**NOTE**: *civic-json-worker is being expanded to work for any city. Development of this project has moved to Code for America's [civic-json-worker fork](https://github.com/codeforamerica/civic-json-worker#contribute).*
 
 ## Objective
 
