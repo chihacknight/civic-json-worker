@@ -1,3 +1,4 @@
 *.pyc
 celerybeat-schedule
 /data
+app_config.py

@@ -2,23 +2,25 @@ import os
 import json
 from celery import Celery
 import requests
-from urlparse import urlparse
+from urllib.parse import urlparse
 from operator import itemgetter
 from itertools import groupby
 from git import Repo, GitCommandError
 from datetime import datetime
 
+from app_config import GITHUB_TOKEN
+
 celery = Celery('tasks')
 celery.config_from_object('celeryconfig')
 
 GITHUB = 'https://api.github.com'
-GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
+
+DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
 @celery.task
 def update_projects():
-    f = open('data/projects.json', 'rb')
-    project_list = json.loads(f.read())
-    f.close()
+    with open('{}/projects.json'.format(DATA_PATH), 'r') as f:
+        project_list = json.loads(f.read())
     details = []
     for project_url in project_list:
         try:
@@ -27,33 +29,48 @@ def update_projects():
             return 'Github is throttling. Just gonna try again after limit is reset.'
         if pj_details:
             details.append(pj_details)
-    f = open('data/project_details.json', 'wb')
-    f.write(json.dumps(details, indent=4))
-    f.close()
-    f = open('data/people.json', 'wb')
-    f.write(json.dumps(get_people_totals(details), indent=4))
-    f.close()
-    orgs = [d for d in details if d['owner']['type'] == 'Organization']
-    f = open('data/organizations.json', 'wb')
-    f.write(json.dumps(get_org_totals(orgs), indent=4))
-    f.close()
-    return 'Updated'
+    
+    with open('{}/project_details.json'.format(DATA_PATH), 'w') as f:
+        f.write(json.dumps(details, indent=4))
+    
+    update_people()
+    update_orgs()
+    
+    return 'Updated projects'
 
 @celery.task
 def backup_data():
     os.setuid(1001)
-    repo_path = os.path.join(os.path.abspath(os.curdir), 'data')
-    repo = Repo(repo_path)
+    repo = Repo(DATA_PATH)
     g = repo.git
     g.add(repo_path)
     g.commit(message="Backed up at %s" % datetime.now().isoformat(), author="eric.vanzanten@gmail.com")
     g.push()
     return None
 
+def update_people():
+    with open('{}/project_details.json'.format(DATA_PATH), 'r') as f:
+        details = json.loads(f.read())
+    
+    with open('{}/people.json'.format(DATA_PATH), 'w') as f:
+        f.write(json.dumps(get_people_totals(details), indent=4))
+    
+    return 'Updated people'
+
+def update_orgs():
+    with open('{}/project_details.json'.format(DATA_PATH), 'r') as f:
+        details = json.loads(f.read())
+    
+    orgs = [d for d in details if d['owner']['type'] == 'Organization']
+    with open('{}/organizations.json'.format(DATA_PATH), 'w') as f:
+        f.write(json.dumps(get_org_totals(orgs), indent=4))
+    
+    return 'Updated orgs'
+
 def build_user(user):
     user_info = {}
-    user_info['login'] = user.keys()[0]
-    repos = user.values()[0]
+    user_info['login'] = list(user.keys())[0]
+    repos = list(user.values())[0]
     user_info['repositories'] = len(repos)
     try:
         user_info['contributions'] = sum([c['contributions'] for c in repos])
@@ -119,15 +136,18 @@ def update_project(project_url):
     headers = {'Authorization': 'token %s' % GITHUB_TOKEN}
     r = requests.get(url, headers=headers)
     if r.status_code == 200:
-        f = open('data/projects.json', 'rb')
-        inp_list = list(set(json.loads(f.read())))
-        f.close()
+        
+        with open('{}/projects.json'.format(DATA_PATH), 'r') as f:
+            inp_list = list(set(json.loads(f.read())))
+        
         inp = [l.rstrip('/') for l in inp_list]
+        
         if not project_url in inp:
             inp.append(project_url)
-            f = open('data/projects.json', 'wb')
-            f.write(json.dumps(inp, indent=4))
-            f.close()
+            
+            with open('{}/projects.json'.format(DATA_PATH), 'w') as f:
+                f.write(json.dumps(inp, indent=4))
+
         repo = r.json()
         owner = repo.get('owner')
         detail = {
@@ -175,13 +195,14 @@ def update_project(project_url):
         return detail
     elif r.status_code == 404:
         # Can't find the project on gitub so scrub it from the list
-        f = open('data/projects.json', 'rb')
-        projects = json.loads(f.read())
-        f.close()
+        with open('{}/projects.json'.format(DATA_PATH), 'r') as f:
+            projects = json.loads(f.read())
+
         projects.remove(project_url)
-        f = open('data/projects.json', 'wb')
-        f.write(json.dumps(projects, indent=4))
-        f.close()
+        
+        with open('{}/projects.json'.format(DATA_PATH), 'w') as f:
+            f.write(json.dumps(projects, indent=4))
+
         return None
     elif r.status_code == 403: 
         raise IOError('Over rate limit')
